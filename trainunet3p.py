@@ -252,7 +252,7 @@ class UNet3Plus(nn.Module):
             return outputs[0]
 
 
-ef train_base_model(suffix, encoder_name, encoder_weights, decoder_attention_type):
+def train_base_model(suffix, checkpoint=None): #encoder_name, encoder_weights, decoder_attention_type
     # wandb.finish()    
     
     train_set = BioMasstersDatasetS2S1(s2_path=f"{root_dir}/train_features_s2_6S",
@@ -280,7 +280,12 @@ ef train_base_model(suffix, encoder_name, encoder_weights, decoder_attention_typ
                              decoder_attention_type=decoder_attention_type,
                              in_channels=S2_CHANNELS['6S']+S1_CHANNELS['6S'], classes=1, activation=None)'''
 
-    s2s1_model = SentinelModel(model, mean_agb=mean_agb, std_agb=std_agb, lr=0.001, wd=0.0001)
+    if checkpoint!=None:
+        s2s1_model = SentinelModel.load_from_checkpoint(model=model, checkpoint_path=checkpoint_path, 
+                                                    mean_agb=mean_agb, std_agb=std_agb,
+                                                    lr=0.0005, wd=0.0001)
+    else:
+        s2s1_model = SentinelModel(model, mean_agb=mean_agb, std_agb=std_agb, lr=0.001, wd=0.0001)
 
     # summary(s2s1_model.cuda(), (S2_CHANNELS['6S']+S1_CHANNELS['6S'], 256, 256)) 
 
@@ -296,14 +301,14 @@ ef train_base_model(suffix, encoder_name, encoder_weights, decoder_attention_typ
     checkpoint_callback = [on_best_valid_loss, on_best_valid_rmse, lr_monitor]
 
     # Initialize a trainer
-    trainer = Trainer(precision=16, accelerator="gpu", devices=1, max_epochs=200, 
+    trainer = Trainer(precision=16, accelerator="gpu", devices=1, max_epochs=100, 
                       # logger=[wandb_logger], 
                       callbacks=checkpoint_callback)
     # Train the model ⚡
     trainer.fit(s2s1_model, train_dataloaders=train_loader, val_dataloaders=val_loader)
 
 
-def train_finetuned_model(checkpoint_path, suffix, encoder_name, decoder_attention_type):
+def train_finetuned_model(checkpoint_path, suffix):
     # wandb.finish()
 
     train_set = BioMasstersDatasetS2S1(s2_path=f"{root_dir}/train_features_s2_6S",
@@ -349,17 +354,17 @@ def train_finetuned_model(checkpoint_path, suffix, encoder_name, decoder_attenti
     checkpoint_callback = [on_best_valid_loss, on_best_valid_rmse, lr_monitor]
 
     # Initialize a trainer
-    trainer = Trainer(precision=16, accelerator="gpu", devices=1, max_epochs=100, 
+    trainer = Trainer(precision=16, accelerator="gpu", devices=1, max_epochs=50, 
                       # logger=[wandb_logger], 
                       callbacks=checkpoint_callback)
     # Train the model ⚡
     trainer.fit(s2s1_model, train_dataloaders=train_loader, val_dataloaders=val_loader)
 
 if __name__ == '__main__':
-    train_base_model('6S', "mit_b5", "imagenet", None)
+    train_base_model('6S')
 
 
 
 if __name__ == '__main__':
     checkpoint_path = r'./models/se_resnext50_32x4d_6S_None/qji032p2/checkpoints/loss=0.07499314099550247.ckpt'
-    train_finetuned_model(checkpoint_path, '6S', "mit_b5", None)
+    train_finetuned_model(checkpoint_path, '6S')
