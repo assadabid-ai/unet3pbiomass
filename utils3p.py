@@ -856,7 +856,7 @@ class SentinelModel(pl.LightningModule):
         x, y = batch
         y_hat = self.model(x)
 
-        loss = unet3p_hybrid_loss(y_hat,y) #F.huber_loss(y_hat, y)
+        loss = F.huber_loss(y_hat, y)
 
         self.log("train/loss", loss, on_step=False, on_epoch=True)
 
