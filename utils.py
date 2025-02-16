@@ -856,6 +856,9 @@ class SentinelModel(pl.LightningModule):
         x, y = batch
         y_hat = self.model(x)
 
+        y = y.unsqueeze(1)  
+        y = y.repeat_interleave(5, dim=0)
+
         loss = F.huber_loss(y_hat, y)
 
         self.log("train/loss", loss, on_step=False, on_epoch=True)
