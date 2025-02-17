@@ -317,7 +317,7 @@ def train_finetuned_model(checkpoint_path, suffix):
     checkpoint_callback = [on_best_valid_loss, on_best_valid_rmse, lr_monitor]
 
     # Initialize a trainer
-    trainer = Trainer(precision=16, accelerator="gpu", devices=1, max_epochs=50, 
+    trainer = Trainer(precision=16, accelerator="gpu", devices=[0,1,2,3], strategy="ddp", max_epochs=50, 
                       logger=[wandb_logger], 
                       callbacks=checkpoint_callback)
     # Train the model ⚡
