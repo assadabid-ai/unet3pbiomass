@@ -293,7 +293,7 @@ def train_base_model(suffix, checkpoint=None): #encoder_name, encoder_weights, d
     in_channels=S2_CHANNELS['6S']+S1_CHANNELS['6S']
     INPUT_SHAPE = [in_channels, 256, 256]
     OUTPUT_CHANNELS = 1
-    encoder_name = ""
+    encoder_name = "swinv2_base_window12to16_192to256.ms_in22k_ft_in1k"
 
     model = UNet3PlusTIMM(backbone_name=encoder_name, OUTPUT_CHANNELS, deep_supervision=True, cgm=False, training=True)
     '''model = smp.UnetPlusPlus(encoder_name=encoder_name, encoder_weights=encoder_weights, 
@@ -328,64 +328,7 @@ def train_base_model(suffix, checkpoint=None): #encoder_name, encoder_weights, d
     trainer.fit(s2s1_model, train_dataloaders=train_loader, val_dataloaders=val_loader)
 
 
-def train_finetuned_model(checkpoint_path, suffix):
-    wandb.finish()
-
-    train_set = BioMasstersDatasetS2S1(s2_path=f"{root_dir}/train_features_s2_6S",
-                                       s1_path=f"{root_dir}/train_features_s1_6S",
-                                       agb_path=f"{root_dir}/train_agbm", X=X_train, mean=mean['6S'], std=std['6S'], 
-                                       mean_agb=mean_agb, std_agb=std_agb, transform=None)
-
-    val_set = BioMasstersDatasetS2S1(s2_path=f"{root_dir}/train_features_s2_6S",
-                                     s1_path=f"{root_dir}/train_features_s1_6S",
-                                     agb_path=f"{root_dir}/train_agbm", X=X_val, mean=mean['6S'], std=std['6S'], 
-                                     mean_agb=mean_agb, std_agb=std_agb, transform=None)
-
-    train_loader = DataLoader(train_set, shuffle=True, batch_size=16, num_workers=8, pin_memory=True)
-
-    val_loader = DataLoader(val_set, shuffle=False, batch_size=16, num_workers=8, pin_memory=True)
-
-    in_channels=S2_CHANNELS['6S']+S1_CHANNELS['6S']
-    INPUT_SHAPE = [in_channels, 256, 256]
-    OUTPUT_CHANNELS = 1
-    encoder_name = ""
-
-    model = UNet3PlusTIMM(backbone_name=encoder_name, OUTPUT_CHANNELS, deep_supervision=True, cgm=False, training=True)
-    '''model = smp.UnetPlusPlus(encoder_name=encoder_name, decoder_attention_type=decoder_attention_type,
-                             in_channels=S2_CHANNELS['6S']+S1_CHANNELS['6S'], classes=1, activation=None)'''
-
-    freeze_encoder(model)
-
-    s2s1_model = SentinelModel.load_from_checkpoint(model=model, checkpoint_path=checkpoint_path, 
-                                                    mean_agb=mean_agb, std_agb=std_agb,
-                                                    lr=0.0005, wd=0.0001)
-
-    # summary(s2s1_model.cuda(), (S2_CHANNELS['6S']+S1_CHANNELS['6S'], 256, 256)) 
-
-
-    wandb_logger = WandbLogger(save_dir=f'./models', name=f'{encoder_name}_6S', 
-                               project=f'{encoder_name}_6S')
-
-    ## Define a trainer and start training:
-    on_best_valid_loss = ModelCheckpoint(filename="{epoch}-{valid/loss}", mode='min', save_last=True,
-                                         monitor='valid/loss', save_top_k=2)
-    on_best_valid_rmse = ModelCheckpoint(filename="{epoch}-{valid/rmse}", mode='min', save_last=True,
-                                         monitor='valid/rmse', save_top_k=2)
-    lr_monitor = LearningRateMonitor(logging_interval='epoch')
-    checkpoint_callback = [on_best_valid_loss, on_best_valid_rmse, lr_monitor]
-
-    # Initialize a trainer
-    trainer = Trainer(precision=16, accelerator="gpu", devices=1, max_epochs=50, 
-                      # logger=[wandb_logger], 
-                      callbacks=checkpoint_callback)
-    # Train the model ⚡
-    trainer.fit(s2s1_model, train_dataloaders=train_loader, val_dataloaders=val_loader)
 
 if __name__ == '__main__':
     train_base_model('6S')
 
-
-
-if __name__ == '__main__':
-    checkpoint_path = r'./models/se_resnext50_32x4d_6S/qji032p2/checkpoints/loss=0.07499314099550247.ckpt'
-    train_finetuned_model(checkpoint_path, '6S')
