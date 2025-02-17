@@ -860,7 +860,7 @@ class SentinelModel(pl.LightningModule):
 
         loss = F.huber_loss(y_hat, y)
 
-        self.log("train/loss", loss, on_step=False, on_epoch=True)
+        self.log("train/loss", loss, on_step=False, on_epoch=True, sync_dist=True)
 
         ## Normalization:
         t = T.Compose([UnNormalize(self.mean_agb, self.std_agb)])
@@ -871,7 +871,7 @@ class SentinelModel(pl.LightningModule):
         _y = t(y)
         _y[_y < 0] = 0
 
-        self.log("train/rmse", torch.sqrt(F.mse_loss(_y_hat, _y)), on_step=False, on_epoch=True)
+        self.log("train/rmse", torch.sqrt(F.mse_loss(_y_hat, _y)), on_step=False, on_epoch=True, sync_dist=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -880,7 +880,7 @@ class SentinelModel(pl.LightningModule):
         y_hat = torch.nan_to_num(y_hat) # TODO: to avoid NaNs in validation when test=96
 
         loss = F.huber_loss(y_hat, y)
-        self.log("valid/loss", loss, on_step=False, on_epoch=True)
+        self.log("valid/loss", loss, on_step=False, on_epoch=True, sync_dist=True)
 
         ## AGB Nomralization:
         t = T.Compose([UnNormalize(self.mean_agb, self.std_agb)])
@@ -891,7 +891,7 @@ class SentinelModel(pl.LightningModule):
         _y = t(y)
         _y[_y < 0] = 0
 
-        self.log("valid/rmse", torch.sqrt(F.mse_loss(_y_hat, _y)), on_step=False, on_epoch=True)
+        self.log("valid/rmse", torch.sqrt(F.mse_loss(_y_hat, _y)), on_step=False, on_epoch=True, sync_dist=True)
         return loss
 
     def configure_optimizers(self):
